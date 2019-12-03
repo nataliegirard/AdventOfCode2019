@@ -39,6 +39,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Part 1", sum1)
-	fmt.Println("Part 2", sum2)
+	fmt.Println("Part 1", sum1) // 3302760
+	fmt.Println("Part 2", sum2) // 4951265
 }
