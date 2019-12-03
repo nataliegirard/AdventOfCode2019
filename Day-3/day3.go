@@ -177,7 +177,86 @@ func findIntersectionDistance(grid [][]string, ox int, oy int) int {
 	return minDistance
 }
 
-func runProgram(lineA []string, lineB []string) int {
+func findIntersections(grid [][]string) []string {
+	var intersections []string
+
+	for i := 0; i < len(grid); i++ {
+		for j := 0; j < len(grid[i]); j++ {
+			if grid[i][j] != "X" {
+				continue
+			}
+			intersections = append(intersections, strconv.Itoa(j)+","+strconv.Itoa(i))
+		}
+	}
+
+	return intersections
+}
+
+func findSteps(grid [][]string, startx int, starty int, ix int, iy int, line []string) int {
+	steps := 0
+	posx := startx
+	posy := starty
+	for _, val := range line {
+		switch val[0] {
+		case 'U':
+			t, _ := strconv.Atoi(val[1:])
+			for i := 0; i < t; i++ {
+				if posx == ix && posy == iy {
+					return steps
+				}
+				posy--
+				steps++
+			}
+		case 'D':
+			t, _ := strconv.Atoi(val[1:])
+			for i := 0; i < t; i++ {
+				if posx == ix && posy == iy {
+					return steps
+				}
+				posy++
+				steps++
+			}
+		case 'R':
+			t, _ := strconv.Atoi(val[1:])
+			for i := 0; i < t; i++ {
+				if posx == ix && posy == iy {
+					return steps
+				}
+				posx++
+				steps++
+			}
+		case 'L':
+			t, _ := strconv.Atoi(val[1:])
+			for i := 0; i < t; i++ {
+				if posx == ix && posy == iy {
+					return steps
+				}
+				posx--
+				steps++
+			}
+		}
+	}
+	return steps
+}
+
+func findFewestSteps(grid [][]string, startx int, starty int, lineA []string, lineB []string) int {
+	intersections := findIntersections(grid)
+	lowestSteps := 100000
+
+	for i := 0; i < len(intersections); i++ {
+		intersec := strings.Split(intersections[i], ",")
+		ix, _ := strconv.Atoi(intersec[0])
+		iy, _ := strconv.Atoi(intersec[1])
+		stepsA := findSteps(grid, startx, starty, ix, iy, lineA)
+		stepsB := findSteps(grid, startx, starty, ix, iy, lineB)
+		if stepsA+stepsB < lowestSteps {
+			lowestSteps = stepsA + stepsB
+		}
+	}
+	return lowestSteps
+}
+
+func runProgram(lineA []string, lineB []string) (int, int) {
 	horz, vert, startx, starty := getDimensions(lineA, lineB)
 
 	grid := make([][]string, vert)
@@ -192,24 +271,29 @@ func runProgram(lineA []string, lineB []string) int {
 	addLine(grid, startx, starty, lineA, "a")
 	addLine(grid, startx, starty, lineB, "b")
 	//printGrid(grid)
-	result := findIntersectionDistance(grid, startx, starty)
-	return result
+	resultA := findIntersectionDistance(grid, startx, starty)
+	resultB := findFewestSteps(grid, startx, starty, lineA, lineB)
+	return resultA, resultB
 }
 
 func main() {
-	/*line1A, line1B := readFile("ex1.txt")
-	result1 := runProgram(line1A, line1B)
-	fmt.Println("ex1:", result1, "expected 6")
+	line1A, line1B := readFile("ex1.txt")
+	result1A, result1B := runProgram(line1A, line1B)
+	fmt.Println("ex1:", result1A, "expected 6")
+	fmt.Println("ex1 part2:", result1B, "expected 30")
 
 	line2A, line2B := readFile("ex2.txt")
-	result2 := runProgram(line2A, line2B)
-	fmt.Println("ex2:", result2, "expected 159")
+	result2A, result2B := runProgram(line2A, line2B)
+	fmt.Println("ex2:", result2A, "expected 159")
+	fmt.Println("ex2 part2:", result2B, "expected 610")
 
 	line3A, line3B := readFile("ex3.txt")
-	result3 := runProgram(line3A, line3B)
-	fmt.Println("ex3:", result3, "expected 135")*/
+	result3A, result3B := runProgram(line3A, line3B)
+	fmt.Println("ex3:", result3A, "expected 135")
+	fmt.Println("ex3 part2:", result3B, "expected 410")
 
 	lineA, lineB := readFile("input.txt")
-	result := runProgram(lineA, lineB)
-	fmt.Println("Part 1:", result) // 1285
+	resultA, resultB := runProgram(lineA, lineB)
+	fmt.Println("Part 1:", resultA) // 1285
+	fmt.Println("Part 2:", resultB) // 14228
 }
