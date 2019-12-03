@@ -191,13 +191,13 @@ func runProgram(lineA []string, lineB []string) int {
 	grid[starty][startx] = "o"
 	addLine(grid, startx, starty, lineA, "a")
 	addLine(grid, startx, starty, lineB, "b")
-	printGrid(grid)
+	//printGrid(grid)
 	result := findIntersectionDistance(grid, startx, starty)
 	return result
 }
 
 func main() {
-	line1A, line1B := readFile("ex1.txt")
+	/*line1A, line1B := readFile("ex1.txt")
 	result1 := runProgram(line1A, line1B)
 	fmt.Println("ex1:", result1, "expected 6")
 
@@ -207,5 +207,9 @@ func main() {
 
 	line3A, line3B := readFile("ex3.txt")
 	result3 := runProgram(line3A, line3B)
-	fmt.Println("ex3:", result3, "expected 135")
+	fmt.Println("ex3:", result3, "expected 135")*/
+
+	lineA, lineB := readFile("input.txt")
+	result := runProgram(lineA, lineB)
+	fmt.Println("Part 1:", result) // 1285
 }
