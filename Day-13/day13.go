@@ -37,7 +37,7 @@ func getValue(values []int64, mode int64, index int64, relativeBase int64) int64
 	return values[index]
 }
 
-func Intcode(values []int64, inbound chan int64, outbound chan int64) int64 {
+func Intcode(values []int64, message chan int64, waiting chan bool) int64 {
 	var i int64 = 0
 	var lastOutput int64 = 0
 	var relativeBase int64 = 0
@@ -66,7 +66,8 @@ func Intcode(values []int64, inbound chan int64, outbound chan int64) int64 {
 			i += 4
 		case 3:
 			index := values[i+1]
-			inputValue := <-inbound
+			waiting <- true
+			inputValue := <-message
 			if mode1 == 2 {
 				index += relativeBase
 			}
@@ -76,7 +77,7 @@ func Intcode(values []int64, inbound chan int64, outbound chan int64) int64 {
 			value1 := getValue(values, mode1, values[i+1], relativeBase)
 			fmt.Println("Output:", value1)
 			lastOutput = value1
-			outbound <- value1
+			message <- value1
 			i += 2
 		case 5:
 			value1 := getValue(values, mode1, values[i+1], relativeBase)
@@ -127,8 +128,10 @@ func Intcode(values []int64, inbound chan int64, outbound chan int64) int64 {
 			relativeBase += value1
 			i += 2
 		case 99:
-			close(outbound)
-			i = <-inbound
+			close(message)
+			close(waiting)
+			<-message
+			<-waiting
 			endloop = true
 		}
 
@@ -140,6 +143,40 @@ func Intcode(values []int64, inbound chan int64, outbound chan int64) int64 {
 	return lastOutput
 }
 
+func playGame(message chan int64, waiting chan bool) int64 {
+	var score int64
+	var ball int64
+	var paddle int64
+	for {
+		select {
+		case _, ok := <-waiting:
+			if !ok {
+				return score
+			}
+
+			if paddle > ball {
+				message <- int64(-1)
+			} else if paddle < ball {
+				message <- int64(1)
+			} else {
+				message <- int64(0)
+			}
+		case x := <-message:
+			y := <-message
+			value := <-message
+
+			if x == -1 && y == 0 {
+				score = value
+			} else if value == 3 {
+				paddle = x
+			} else if value == 4 {
+				ball = x
+			}
+		default:
+		}
+	}
+}
+
 func main() {
 	b, err := ioutil.ReadFile("input.txt")
 	if err != nil {
@@ -149,16 +186,17 @@ func main() {
 	str = strings.Replace(str, "\n", "", -1)
 	values := convertInput(str)
 
-	toWorker := make(chan int64)
-	fromWorker := make(chan int64)
-	//values[0] = int64(2) // For part 2
-	go Intcode(values, toWorker, fromWorker)
+	message := make(chan int64)
+	waiting := make(chan bool)
+	values[0] = int64(2) // For part 2
+	go Intcode(values, message, waiting)
 
+	/* Part 1:
 	var outputs []int64
 	count := 0
 	i := 0
 	for {
-		output, ok := <-fromWorker
+		output, ok := <-message
 
 		if !ok {
 			break
@@ -174,4 +212,8 @@ func main() {
 	}
 	fmt.Println(outputs)
 	fmt.Println(i, count) // Part 1: 236
+	*/
+
+	score := playGame(message, waiting)
+	fmt.Println("Score:", score) // Part 2: 11040
 }
