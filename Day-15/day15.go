@@ -220,10 +220,8 @@ func printArea(area map[coordinate]cell) {
 	}
 
 	for key, value := range area {
-		if value.maze == "#" {
+		if value.maze == "#" || value.maze == "o" || value.maze == "*" {
 			room[key.y-minY][key.x-minX] = value.maze
-		} else {
-			room[key.y-minY][key.x-minX] = strconv.Itoa(value.steps)
 		}
 	}
 
@@ -252,7 +250,7 @@ func main() {
 	var curr coordinate
 	direction := 0
 	i := 0
-	for output != 2 {
+	for i < 200000 {
 		fmt.Println("(", i, ")", output, "in direction", direction, curr)
 		//store map information based on received output
 		var c cell
@@ -299,13 +297,17 @@ func main() {
 				area[curr] = c
 			}
 		default:
-			if output == 1 && i == 0 {
-				c.maze = "o"
-				area[curr] = c
-			} else {
-				c.maze = "."
-				area[curr] = c
-			}
+			c.maze = "."
+			area[curr] = c
+		}
+
+		if output == 1 && i == 0 {
+			c.maze = "o"
+			area[curr] = c
+		}
+		if output == 2 {
+			c = cell{"*", 0}
+			area[curr] = c
 		}
 
 		newDir, coord := getNewDirection(area, curr, direction)
@@ -313,13 +315,14 @@ func main() {
 		direction = newDir
 		message <- int64(newDir)
 
-		receive := <-message
+		receive, ok := <-message
+		if !ok {
+			break
+		}
 		output = int(receive)
 		i++
 	}
 
-	c := cell{"*", 0}
-	area[curr] = c
 	printArea(area) // part 1: 300
 
 }
