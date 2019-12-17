@@ -65,15 +65,38 @@ func main() {
 		signal[i], _ = strconv.Atoi(inputSignal[i])
 	}
 
-	basePattern := []int{0, 1, 0, -1}
-	workingSignal := make([]int, len(signal))
-
-	for a := 0; a < 100; a++ {
-		for i := 0; i < len(signal); i++ {
-			pattern := getPattern(basePattern, i, len(signal))
-			workingSignal[i] = getNewValue(pattern, signal)
+	/*
+		basePattern := []int{0, 1, 0, -1}
+		workingSignal := make([]int, len(signal))
+		for a := 0; a < 100; a++ {
+			for i := 0; i < len(signal); i++ {
+				pattern := getPattern(basePattern, i, len(signal))
+				workingSignal[i] = getNewValue(pattern, signal)
+			}
+			signal = workingSignal
 		}
+		fmt.Println("last phase", signal[:8]) // Part 1: 40580215
+	*/
+
+	offset := signal[0]*1000000 + signal[1]*100000 + signal[2]*10000 + signal[3]*1000 + signal[4]*100 + signal[5]*10 + signal[6]
+
+	workingSignal := make([]int, len(signal)*10000)
+	for i := 0; i < len(workingSignal); i += len(signal) {
+		copy(workingSignal[i:], signal)
+	}
+	signal = workingSignal
+
+	for i := 0; i < 100; i++ {
+		workingSignal[len(signal)-1] = signal[len(signal)-1]
+		for j := len(signal) - 2; j >= offset; j-- {
+			workingSignal[j] = (signal[j] + workingSignal[j+1]) % 10
+			if workingSignal[j] < 0 {
+				workingSignal[j] *= -1
+			}
+		}
+
 		signal = workingSignal
 	}
-	fmt.Println("last phase", signal[:8]) // Part 1: 40580215
+
+	fmt.Println("Part 2:", signal[offset:offset+8]) // Part 2: 22621597
 }
