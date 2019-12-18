@@ -14,8 +14,8 @@ type coordinate struct {
 }
 
 type cell struct {
-	maze  string
-	steps int
+	marking string
+	steps   int
 }
 
 func convertInput(input string) []int64 {
@@ -84,7 +84,7 @@ func Intcode(values []int64, message chan int64) int64 {
 			i += 2
 		case 4:
 			value1 := getValue(values, mode1, values[i+1], relativeBase)
-			fmt.Println("Output:", value1)
+			//fmt.Println("Output:", value1)
 			lastOutput = value1
 			message <- value1
 			i += 2
@@ -183,21 +183,21 @@ func getNewDirection(area map[coordinate]cell, curr coordinate, direction int) (
 	coord := moveInDirection(curr, moves[dir])
 
 	i := 0
-	for area[coord].maze == "#" && i < 4 {
-		fmt.Println(area[coord], coord, moves[dir], "dir", dir)
+	for area[coord].marking == "#" && i < 4 {
+		//fmt.Println(area[coord], coord, moves[dir], "dir", dir)
 		dir = (dir - 1) % 4
 		if dir < 0 {
 			dir = dir + 4
 		}
-		fmt.Println("dir:", dir)
+		//fmt.Println("dir:", dir)
 		coord = moveInDirection(curr, moves[dir])
 		i++
 	}
-	fmt.Println("New direction", moves[dir], coord, "'", area[coord], "'")
+	//fmt.Println("New direction", moves[dir], coord, "'", area[coord], "'")
 	return moves[dir], coord
 }
 
-func printArea(area map[coordinate]cell) {
+func printArea(area map[coordinate]cell) [][]string {
 	minX, maxX, minY, maxY := 0, 0, 0, 0
 	for key := range area {
 		if key.x < minX {
@@ -220,8 +220,10 @@ func printArea(area map[coordinate]cell) {
 	}
 
 	for key, value := range area {
-		if value.maze == "#" || value.maze == "o" || value.maze == "*" {
-			room[key.y-minY][key.x-minX] = value.maze
+		if value.marking == "#" {
+			room[key.y-minY][key.x-minX] = value.marking
+		} else {
+			room[key.y-minY][key.x-minX] = strconv.Itoa(value.steps)
 		}
 	}
 
@@ -231,6 +233,62 @@ func printArea(area map[coordinate]cell) {
 		comma := strings.Join(room[i], ",")
 		fmt.Fprintln(f, comma)
 	}
+
+	return room
+}
+
+func floodMaze(maze map[coordinate]cell, start coordinate) {
+	currSteps := maze[start].steps
+	c := start
+	t := maze[c]
+
+	// north
+	c.y--
+	t = maze[c]
+	if t.marking != "#" {
+		if t.steps == -1 || t.steps > currSteps+1 {
+			t.steps = currSteps + 1
+			maze[c] = t
+			floodMaze(maze, c)
+		}
+	}
+	c.y++
+
+	// south
+	c.y++
+	t = maze[c]
+	if t.marking != "#" {
+		if t.steps == -1 || t.steps > currSteps+1 {
+			t.steps = currSteps + 1
+			maze[c] = t
+			floodMaze(maze, c)
+		}
+	}
+	c.y--
+
+	// west
+	c.x--
+	t = maze[c]
+	if t.marking != "#" {
+		if t.steps == -1 || t.steps > currSteps+1 {
+			t.steps = currSteps + 1
+			maze[c] = t
+			floodMaze(maze, c)
+		}
+	}
+	c.x++
+
+	// east
+	c.x++
+	t = maze[c]
+	if t.marking != "#" {
+		if t.steps == -1 || t.steps > currSteps+1 {
+			t.steps = currSteps + 1
+			maze[c] = t
+			floodMaze(maze, c)
+		}
+	}
+	c.x--
 }
 
 func main() {
@@ -248,65 +306,69 @@ func main() {
 	area := make(map[coordinate]cell)
 	output := 1
 	var curr coordinate
+	var start coordinate
+	var origin coordinate
 	direction := 0
 	i := 0
 	for i < 200000 {
-		fmt.Println("(", i, ")", output, "in direction", direction, curr)
+		//fmt.Println("(", i, ")", output, "in direction", direction, curr)
 		//store map information based on received output
 		var c cell
 		c.steps = -1
 		switch direction {
 		case 1:
 			if output == 0 {
-				c.maze = "#"
+				c.marking = "#"
 				area[curr] = c
 				curr.y--
 				direction = 2
 			} else {
-				c.maze = "."
+				c.marking = "."
 				area[curr] = c
 			}
 		case 2:
 			if output == 0 {
-				c.maze = "#"
+				c.marking = "#"
 				area[curr] = c
 				curr.y++
 				direction = 1
 			} else {
-				c.maze = "."
+				c.marking = "."
 				area[curr] = c
 			}
 		case 3:
 			if output == 0 {
-				c.maze = "#"
+				c.marking = "#"
 				area[curr] = c
 				curr.x++
 				direction = 4
 			} else {
-				c.maze = "."
+				c.marking = "."
 				area[curr] = c
 			}
 		case 4:
 			if output == 0 {
-				c.maze = "#"
+				c.marking = "#"
 				area[curr] = c
 				curr.x--
 				direction = 3
 			} else {
-				c.maze = "."
+				c.marking = "."
 				area[curr] = c
 			}
 		default:
-			c.maze = "."
+			c.marking = "."
 			area[curr] = c
 		}
 
 		if output == 1 && i == 0 {
-			c.maze = "o"
+			c.marking = "o"
 			area[curr] = c
+			origin = curr
 		}
 		if output == 2 {
 			c = cell{"*", 0}
+			start = curr
 			area[curr] = c
 		}
 
@@ -323,6 +385,14 @@ func main() {
 		i++
 	}
 
-	printArea(area) // part 1: 300
+	floodMaze(area, start)
+	printArea(area)
 
+	maxSteps := 0
+	for _, value := range area {
+		if value.steps > maxSteps {
+			maxSteps = value.steps
+		}
+	}
+	fmt.Println("Part 1", area[origin].steps, "\nPart 2", maxSteps) // part 1: 300, part 2: 312
 }
