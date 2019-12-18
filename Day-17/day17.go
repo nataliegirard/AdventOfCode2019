@@ -46,11 +46,12 @@ func getValue(values []int64, mode int64, index int64, relativeBase int64) int64
 	return values[index]
 }
 
-func Intcode(values []int64) [][]string {
+func Intcode(values []int64, inputs []int64) [][]string {
 	var i int64 = 0
 	var relativeBase int64 = 0
 	var scaffold [][]string
 	var line []string
+	inputIndex := 0
 	row := 0
 	index := 0
 	endloop := false
@@ -78,7 +79,8 @@ func Intcode(values []int64) [][]string {
 			i += 4
 		case 3:
 			index := values[i+1]
-			inputValue := int64(0)
+			inputValue := inputs[inputIndex]
+			inputIndex++
 			fmt.Println("**Asking for input**")
 			if mode1 == 2 {
 				index += relativeBase
@@ -201,7 +203,10 @@ func main() {
 	str = strings.Replace(str, "\n", "", -1)
 	values := convertInput(str)
 
-	scaffold := Intcode(values)
+	emptyInput := make([]int64, 1)
+	emptyInput[0] = int64(0)
+
+	scaffold := Intcode(values, emptyInput)
 	scaffold = scaffold[:len(scaffold)-1]
 	printArea(scaffold)
 
@@ -213,5 +218,23 @@ func main() {
 			}
 		}
 	}
-	fmt.Println("Result:", total) // Part 1
+	fmt.Println("Result:", total) // Part 1: 4044
+
+	// Solution calculated by hand
+	mainRoutine := []int64{65, 44, 66, 44, 65, 44, 67, 44, 65, 44, 66, 44, 67, 44, 66, 44, 67, 44, 66, 10}
+	functionA := []int64{82, 44, 56, 44, 76, 44, 49, 48, 44, 76, 44, 49, 50, 44, 82, 44, 52, 10}
+	functionB := []int64{82, 44, 56, 44, 76, 44, 49, 50, 44, 82, 44, 52, 44, 82, 44, 52, 10}
+	functionC := []int64{82, 44, 56, 44, 76, 44, 49, 48, 44, 82, 44, 56, 10}
+	videoFeed := []int64{110, 10}
+
+	inputValues := mainRoutine
+	inputValues = append(inputValues, functionA...)
+	inputValues = append(inputValues, functionB...)
+	inputValues = append(inputValues, functionC...)
+	inputValues = append(inputValues, videoFeed...)
+
+	values = convertInput(str)
+	values[0] = int64(2)
+	scaffold = Intcode(values, inputValues)
+	printArea(scaffold) // Part 2:
 }
