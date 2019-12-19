@@ -155,7 +155,10 @@ func printArea(area [][]int64, toScreen bool) {
 		f, _ := os.Create("output.csv")
 		defer f.Close()
 		for i := 0; i < len(area); i++ {
-			fmt.Fprintln(f, area[i])
+			for j := 0; j < len(area[i]); j++ {
+				fmt.Fprintf(f, "%d,", area[i][j])
+			}
+			fmt.Fprintf(f, "\n")
 		}
 	}
 }
@@ -169,8 +172,10 @@ func main() {
 	str = strings.Replace(str, "\n", "", -1)
 	values := convertInput(str)
 
+	/*xStart := 35
+	yStart := 52
 	xSize := 50
-	ySize := 50
+	ySize := 10
 	space := make([][]int64, ySize)
 	for i := 0; i < ySize; i++ {
 		space[i] = make([]int64, xSize)
@@ -180,7 +185,7 @@ func main() {
 	for y := 0; y < ySize; y++ {
 		for x := 0; x < xSize; x++ {
 			values = convertInput(str)
-			output := Intcode(values, x, y)
+			output := Intcode(values, x+xStart, y+yStart)
 
 			space[y][x] = output
 			if output == 1 {
@@ -190,5 +195,42 @@ func main() {
 	}
 
 	fmt.Println(count) // part 1: 189
-	//printArea(space, true)
+	printArea(space, false)*/
+
+	// Part 2
+	// start 35,52
+	// if x+99,y != 1 -> y++
+	// else if x,y+99 != 1 -> x++
+	// else, should fit 100x100 in beam
+	x := 35
+	y := 52
+	size := 99
+	var output int64
+	for {
+		//fmt.Println(x, y)
+		values = convertInput(str)
+		output = Intcode(values, x, y)
+		if output != 1 {
+			x++
+			continue
+		}
+
+		values = convertInput(str)
+		output = Intcode(values, x+size, y)
+		if output != 1 {
+			y++
+			continue
+		}
+
+		values = convertInput(str)
+		output = Intcode(values, x, y+size)
+		if output != 1 {
+			x++
+			continue
+		}
+
+		break
+	}
+
+	fmt.Println("Solution:", x, y, x*10000+y) // Part 2: 7621042
 }
