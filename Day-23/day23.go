@@ -166,11 +166,12 @@ func main() {
 	packetsForWorker := make([][]packet, numBots)
 	for i := 0; i < numBots; i++ {
 		values := convertInput(str)
-		toWorkers[i] = make(chan int64)
+		toWorkers[i] = make(chan int64, 1)
 		signals[i] = make(chan bool, 1)
 		fromWorkers[i] = make(chan int64, 3)
 		go Intcode(values, toWorkers[i], fromWorkers[i], signals[i])
 	}
+	time.Sleep(time.Second)
 	for i := 0; i < numBots; i++ {
 		<-signals[i]
 		toWorkers[i] <- int64(i)
@@ -178,20 +179,23 @@ func main() {
 
 	var final int64
 	var nat packet
+	nat.y = int64(-1)
 	var lastSent int64 = 0
 	temp := false
+	count := 0
 	for {
 		end := false
 		idle := 0
+		count++
+		//fmt.Println("Loop", count)
 		for i := 0; i < numBots; i++ {
 			select {
 			case dest := <-fromWorkers[i]:
-				fmt.Println("received from", i, "for", dest)
+				//fmt.Println("received from", i, "for", dest)
 				x := <-fromWorkers[i]
 				y := <-fromWorkers[i]
 				if dest == 255 {
 					final = y
-					end = true
 					nat.x = x
 					nat.y = y
 				} else {
@@ -204,38 +208,38 @@ func main() {
 				temp = sig
 				if len(packetsForWorker[i]) == 0 {
 					idle++
-					fmt.Println("sent -1 to", i)
+					//fmt.Println("sent -1 to", i)
 					toWorkers[i] <- int64(-1)
 				} else {
 					p := packetsForWorker[i][0]
 					packetsForWorker[i] = packetsForWorker[i][1:]
-					fmt.Println("sent a packet to", i, "length of queue:", len(packetsForWorker[i]))
+					//fmt.Println("sent a packet to", i, "length of queue:", len(packetsForWorker[i]))
 					toWorkers[i] <- p.x
 					sig = <-signals[i]
 					toWorkers[i] <- p.y
 				}
 			default:
-				fmt.Println("nothing for", i)
-			}
-			if end {
-				break
+				//fmt.Println("nothing for", i)
 			}
 		}
-		fmt.Println("Idle?", idle, idle == numBots)
+		//fmt.Println("Idle?", idle, idle == numBots)
 		if idle == numBots {
-			<-signals[0]
-			toWorkers[0] <- nat.x
-			<-signals[0]
-			toWorkers[0] <- nat.y
+			if nat.y == -1 {
+				continue
+			}
+			packetsForWorker[0] = append(packetsForWorker[0], nat)
+
 			if nat.y == lastSent {
+				fmt.Println("Seen this packet before", lastSent)
 				end = true
 			} else {
 				lastSent = nat.y
+				fmt.Println("nat", nat.y)
 			}
 		}
 		if end {
 			break
 		}
 	}
-	fmt.Println(temp, "final:", final) // Part 1: 23213
+	fmt.Println(temp, "final:", final) // Part 1: 23213, part 2: 17874
 }
