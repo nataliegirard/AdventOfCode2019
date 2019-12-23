@@ -9,6 +9,11 @@ import (
 	"strconv"
 )
 
+type instruction struct {
+	operation string
+	num       int
+}
+
 func dealToNewStack(deck []int) []int {
 	newDeck := make([]int, len(deck))
 	i := len(deck)
@@ -21,19 +26,14 @@ func dealToNewStack(deck []int) []int {
 }
 
 func cutCards(deck []int, n int) []int {
-	newDeck := make([]int, len(deck))
+	var newDeck []int
 	j := n
 	for j < 0 {
 		j += len(deck)
 	}
 
-	for i := 0; i < len(deck); i++ {
-		newDeck[i] = deck[j]
-		j++
-		if j >= len(deck) {
-			j -= len(deck)
-		}
-	}
+	newDeck = deck[j:]
+	newDeck = append(newDeck, deck[:j]...)
 
 	return newDeck
 }
@@ -48,8 +48,20 @@ func dealWithIncrement(deck []int, n int) []int {
 	return newDeck
 }
 
-func executeCommand(deck []int, command string) []int {
-	newDeck := make([]int, len(deck))
+func executeCommand(command instruction, deck []int) []int {
+	switch command.operation {
+	case "rev":
+		deck = dealToNewStack(deck)
+	case "cut":
+		deck = cutCards(deck, command.num)
+	case "inc":
+		deck = dealWithIncrement(deck, command.num)
+	}
+	return deck
+}
+
+func parseCommand(command string) instruction {
+	var parsed instruction
 
 	deal, _ := regexp.Compile("deal into new stack")
 	cut, _ := regexp.Compile("cut (-?[0-9]+)")
@@ -57,21 +69,102 @@ func executeCommand(deck []int, command string) []int {
 
 	switch {
 	case deal.MatchString(command):
-		newDeck = dealToNewStack(deck)
-		fmt.Println("deal new stack")
+		parsed.operation = "rev"
 	case cut.MatchString(command):
 		match := cut.FindStringSubmatch(command)
 		num, _ := strconv.Atoi(match[1])
-		newDeck = cutCards(deck, num)
-		fmt.Println("cut cards", num)
+		parsed.operation = "cut"
+		parsed.num = num
 	case inc.MatchString(command):
 		match := inc.FindStringSubmatch(command)
 		num, _ := strconv.Atoi(match[1])
-		newDeck = dealWithIncrement(deck, num)
-		fmt.Println("deal inc", num)
+		parsed.operation = "inc"
+		parsed.num = num
 	}
 
-	return newDeck
+	return parsed
+}
+
+func simplifyCommands(commands []instruction, deckSize int) ([]instruction, bool) {
+	changed := false
+
+	i := 1
+
+	for {
+		// check command-1 and command
+		op1 := commands[i-1].operation
+		op2 := commands[i].operation
+		arg1 := commands[i-1].num
+		arg2 := commands[i].num
+
+		var secondHalf []instruction
+		if i+1 < len(commands) {
+			t := commands[i+1:]
+			for j := 0; j < len(t); j++ {
+				secondHalf = append(secondHalf, t[j])
+			}
+		}
+
+		if op1 == op2 {
+			if op1 == "inc" {
+				newComm := commands[i]
+				newComm.num = (arg1 * arg2) % deckSize
+				commands = append(commands[:i-1], newComm)
+				commands = append(commands, secondHalf...)
+				changed = true
+			}
+
+			if op1 == "cut" {
+				newComm := commands[i]
+				newComm.num = (arg1 + arg2) % deckSize
+				commands = append(commands[:i-1], newComm)
+				commands = append(commands, secondHalf...)
+				changed = true
+			}
+
+			if op1 == "rev" {
+				commands = append(commands[:i-1], secondHalf...)
+				changed = true
+			}
+		} else {
+			if op1 == "rev" && op2 == "cut" {
+				first := commands[i-1]
+				second := commands[i]
+				second.num = arg2 * -1
+				commands = append(commands[:i-1], second, first)
+				commands = append(commands, secondHalf...)
+				changed = true
+				i++
+			} else if op1 == "rev" && op2 == "inc" {
+				first := commands[i-1]
+				second := commands[i]
+				var newComm instruction
+				newComm.operation = "cut"
+				newComm.num = 1 - arg2
+
+				commands = append(commands[:i-1], second, newComm, first)
+				commands = append(commands, secondHalf...)
+				changed = true
+				i += 2
+			} else if op1 == "cut" && op2 == "inc" {
+				first := commands[i-1]
+				second := commands[i]
+				first.num = (arg1 * arg2) % deckSize
+				commands = append(commands[:i-1], second, first)
+				commands = append(commands, secondHalf...)
+				changed = true
+				i++
+			} else {
+				i++
+			}
+		}
+
+		if i == len(commands) {
+			break
+		}
+	}
+
+	return commands, changed
 }
 
 func main() {
@@ -90,15 +183,27 @@ func main() {
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
 
+	var commands []instruction
 	for scanner.Scan() {
 		line := scanner.Text()
-		deck = executeCommand(deck, line)
-
+		t := parseCommand(line)
+		commands = append(commands, t)
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
+
+	changed := true
+	for changed {
+		commands, changed = simplifyCommands(commands, deckSize)
+	}
+
+	for _, c := range commands {
+		deck = executeCommand(c, deck)
+	}
+
+	fmt.Println("Reduced\n", commands)
 
 	result := 0
 	for i := 0; i < len(deck); i++ {
@@ -106,51 +211,6 @@ func main() {
 			result = i
 		}
 	}
-	fmt.Println("Part 1:", result) // Part 1:
+	fmt.Println("Part 1:", result) // Part 1: 8379
 
-	//deck := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
-	// Function for deal to new stack
-	/*newDeck := dealToNewStack(deck)
-	fmt.Println(newDeck) // 9 8 7 6 5 4 3 2 1 0 */
-
-	// Function for cut N cards
-	/*newDeck := cutCards(deck, 3)
-	fmt.Println(newDeck) // 3 4 5 6 7 8 9 0 1 2
-	newDeck = cutCards(deck, -4)
-	fmt.Println(newDeck) // 6 7 8 9 0 1 2 3 4 5 */
-
-	// Function for deal with increment
-	/*newDeck := dealWithIncrement(deck, 3)
-	fmt.Println(newDeck) // 0 7 4 1 8 5 2 9 6 3 */
-
-	// Example 1
-	/*deck = dealWithIncrement(deck, 7)
-	deck = dealToNewStack(deck)
-	deck = dealToNewStack(deck)
-	fmt.Println(deck) // 0 3 6 9 2 5 8 1 4 7 */
-
-	// Example 2
-	/*deck = cutCards(deck, 6)
-	deck = dealWithIncrement(deck, 7)
-	deck = dealToNewStack(deck)
-	fmt.Println(deck) // 3 0 7 4 1 8 5 2 9 6 */
-
-	// Example 3
-	/*deck = dealWithIncrement(deck, 7)
-	deck = dealWithIncrement(deck, 9)
-	deck = cutCards(deck, -2)
-	fmt.Println(deck) // 6 3 0 7 4 1 8 5 2 9 */
-
-	// Example 4
-	/*deck = dealToNewStack(deck)
-	deck = cutCards(deck, -2)
-	deck = dealWithIncrement(deck, 7)
-	deck = cutCards(deck, 8)
-	deck = cutCards(deck, -4)
-	deck = dealWithIncrement(deck, 7)
-	deck = cutCards(deck, 3)
-	deck = dealWithIncrement(deck, 9)
-	deck = dealWithIncrement(deck, 3)
-	deck = cutCards(deck, -1)
-	fmt.Println(deck) // 9 2 5 8 1 4 7 0 3 6 */
 }
