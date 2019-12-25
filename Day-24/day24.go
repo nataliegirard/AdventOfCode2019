@@ -382,5 +382,5 @@ func main() {
 			}
 		}
 	}
-	fmt.Println("Part 2:", countBugs)
+	fmt.Println("Part 2:", countBugs) // Part 2: 2025
 }
